@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model FamilyMember {
+  id            String   @id @default(cuid())
+  name          String
+  sensitivities String   @default("") // comma-separated: "gluten,dairy,nuts"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mealAttendees MealAttendee[]
+}
+
+model Recipe {
+  id              String   @id @default(cuid())
+  title           String
+  description     String   @default("")
+  ingredients     String   @default("[]") // JSON array: [{name, quantity, unit}]
+  instructions    String   @default("")
+  prepTimeMinutes Int      @default(30)
+  source          String   @default("user") // "user" or "ai"
+  tags            String   @default("") // comma-separated: "quick,vegetarian,pasta"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  mealSlots MealSlot[]
+}
+
+model PantryItem {
+  id        String    @id @default(cuid())
+  name      String
+  quantity  Float     @default(1)
+  unit      String    @default("") // "lbs", "oz", "cups", etc.
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model WeekPlan {
+  id            String   @id @default(cuid())
+  weekStartDate DateTime // Monday of that week
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mealSlots MealSlot[]
+}
+
+model MealSlot {
+  id         String  @id @default(cuid())
+  weekPlanId String
+  dayOfWeek  Int // 0=Monday ... 6=Sunday
+  mealType   String  @default("dinner") // "dinner", "lunch", etc.
+  recipeId   String?
+  notes      String  @default("")
+
+  weekPlan      WeekPlan       @relation(fields: [weekPlanId], references: [id], onDelete: Cascade)
+  recipe        Recipe?        @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  mealAttendees MealAttendee[]
+}
+
+model MealAttendee {
+  id             String @id @default(cuid())
+  mealSlotId     String
+  familyMemberId String
+
+  mealSlot     MealSlot     @relation(fields: [mealSlotId], references: [id], onDelete: Cascade)
+  familyMember FamilyMember @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([mealSlotId, familyMemberId])
+}
+
+model MealPreference {
+  id        String @id @default(cuid())
+  dayOfWeek Int // 0=Monday ... 6=Sunday
+  label     String // e.g. "Fish", "Pasta", "Slow cooker"
+  createdAt DateTime @default(now())
+}
